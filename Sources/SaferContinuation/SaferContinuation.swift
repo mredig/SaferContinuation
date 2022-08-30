@@ -32,6 +32,19 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	private let delayCheckInterval: TimeInterval?
 
 
+	/**
+	Basic usage:
+	- Parameters:
+	  - continuation: Provide the original continuation. This is the only required argument as everything else has default provided values.
+	  - isFatal: Causes a `fatalError` upon mishandling of async/await calls if true.
+	  - delayCheckInterval: The time delay in seconds to check to see if the continuation has been released from memory or not. If still present in
+	  memory, will post a `SaferContinuation.potentialMemoryLeak` notification. Can be disabled by passing `nil`. Defaults to `3`
+	  - file: Provides context of what file the continuation error occured in. Just don't touch, really.
+	  - line: Provides context of what line the continuation error occured on. Just don't touch, really.
+	  - function: Provides context of what function the continuation error occured in. Just don't touch, really.
+	  - context: Allows you to provide any arbitrary data to differentiate between different continuations that you can inspect when errors are thrown or
+	 notifications posted.. Could be a string, a UUID, a UIImage, or your mom's nickname. The last one is probably not useful though. You be the judge.
+	 */
 	public init(_ continuation: C, isFatal: Bool = false, delayCheckInterval: TimeInterval? = 3, file: StaticString = #file, line: Int = #line, function: StaticString = #function, context: Any? = nil) {
 		self.continuation = continuation
 		self.isFatal = isFatal
