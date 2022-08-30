@@ -35,4 +35,35 @@ final class SaferContinuationTests: XCTestCase {
 
 		wait(for: [notificationExpectation], timeout: 1)
 	}
+
+	func testNoInvocations() async throws {
+		let task = Task {
+			let _: Void = try await withCheckedThrowingContinuation { continuation in
+				let safer = SaferContinuation(continuation)
+				DispatchQueue.global().asyncAfter(deadline: .now() + 0.25) {
+					// keep it around long enough to simulate waiting for a callback to do something, but ultimately not fire
+					print(safer)
+				}
+			}
+		}
+
+		let result = await task.result
+
+		XCTAssertThrowsError(try result.get())
+	}
+
+	func testCorrectInvocations() async throws {
+		let task = Task {
+			let _: Void = try await withCheckedThrowingContinuation { continuation in
+				let safer = SaferContinuation(continuation)
+				DispatchQueue.global().asyncAfter(deadline: .now() + 0.25) {
+					safer.resume(with: .success(Void()))
+				}
+			}
+		}
+
+		let result = await task.result
+
+		XCTAssertNoThrow(try result.get())
+	}
 }
