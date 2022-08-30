@@ -27,17 +27,19 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	private let file: StaticString
 	private let line: Int
 	private let function: StaticString
+	public let context: Any?
 
 	private let delayCheckInterval: TimeInterval?
 
 
-	public init(_ continuation: C, isFatal: Bool = false, delayCheckInterval: TimeInterval? = 3, file: StaticString = #file, line: Int = #line, function: StaticString = #function) {
+	public init(_ continuation: C, isFatal: Bool = false, delayCheckInterval: TimeInterval? = 3, file: StaticString = #file, line: Int = #line, function: StaticString = #function, context: Any? = nil) {
 		self.continuation = continuation
 		self.isFatal = isFatal
 		self.file = file
 		self.line = line
 		self.function = function
 		self.delayCheckInterval = delayCheckInterval
+		self.context = context
 	}
 
 	deinit {
@@ -45,7 +47,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		defer { SaferContinuation<UnsafeContinuation<Void, Error>>.safeContinuationLock.unlock() }
 
 		if hasRun == false {
-			let error = SafeContinuationError.continuationNeverCompleted(file: file, line: line, function: function)
+			let error = SafeContinuationError.continuationNeverCompleted(file: file, line: line, function: function, context: context)
 			self.continuation.resume(throwing: error)
 			if isFatal {
 				fatalError("Continuation was never completed!: \(error)")
@@ -99,14 +101,14 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		Statics.safeContinuationLock.lock()
 		defer { Statics.safeContinuationLock.unlock() }
 
-		guard hasRun == false else { throw SafeContinuationError.alreadyRun(file: file, line: line, function: function) }
+		guard hasRun == false else { throw SafeContinuationError.alreadyRun(file: file, line: line, function: function, context: context) }
 		hasRun = true
 
 		if let delayCheckInterval = delayCheckInterval {
-			Task { [weak self, isFatal, file, line, function] in
+			Task { [weak self, isFatal, file, line, function, context] in
 				try await Task.sleep(nanoseconds: UInt64(delayCheckInterval * 1_000_000_000))
 				guard self == nil else {
-					let error = SafeContinuationError.alreadyRun(file: file, line: line, function: function)
+					let error = SafeContinuationError.alreadyRun(file: file, line: line, function: function, context: context)
 					let message = "WARNING: Continuation completed \(delayCheckInterval) seconds ago and hasn't been released from memory!: \(error)"
 					print(message)
 					if isFatal {
@@ -119,8 +121,8 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	}
 
 	public enum SafeContinuationError: Error {
-		case alreadyRun(file: StaticString, line: Int, function: StaticString)
-		case continuationNeverCompleted(file: StaticString, line: Int, function: StaticString)
+		case alreadyRun(file: StaticString, line: Int, function: StaticString, context: Any?)
+		case continuationNeverCompleted(file: StaticString, line: Int, function: StaticString, context: Any?)
 	}
 }
 
