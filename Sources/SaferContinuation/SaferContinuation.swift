@@ -43,8 +43,8 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	}
 
 	deinit {
-		SaferContinuation<UnsafeContinuation<Void, Error>>.safeContinuationLock.lock()
-		defer { SaferContinuation<UnsafeContinuation<Void, Error>>.safeContinuationLock.unlock() }
+		Statics.safeContinuationLock.lock()
+		defer { Statics.safeContinuationLock.unlock() }
 
 		if hasRun == false {
 			let error = SafeContinuationError.continuationNeverCompleted(file: file, line: line, function: function, context: context)
@@ -56,31 +56,11 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	}
 
 	public func resume(returning value: C.T) {
-		do {
-			try markCompleted()
-		} catch {
-			print("WARNING: Continuation already completed!: \(error)")
-			NotificationCenter.default.post(name: Statics.multipleInvocations , object: self)
-			if isFatal {
-				fatalError("Continuation already completed!: \(error)")
-			}
-			return
-		}
-		continuation.resume(returning: value)
+		resume(with: .success(value))
 	}
 
 	public func resume(throwing error: C.E) {
-		do {
-			try markCompleted()
-		} catch {
-			print("WARNING: Continuation already completed!: \(error)")
-			NotificationCenter.default.post(name: Statics.multipleInvocations , object: self)
-			if isFatal {
-				fatalError("Continuation already completed!: \(error)")
-			}
-			return
-		}
-		continuation.resume(throwing: error)
+		resume(with: .failure(error))
 	}
 
 	public func resume(with result: Result<C.T, C.E>) {
@@ -111,6 +91,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 					let error = SafeContinuationError.alreadyRun(file: file, line: line, function: function, context: context)
 					let message = "WARNING: Continuation completed \(delayCheckInterval) seconds ago and hasn't been released from memory!: \(error)"
 					print(message)
+					NotificationCenter.default.post(name: Statics.potentialMemoryLeak, object: self)
 					if isFatal {
 						fatalError(message)
 					}
@@ -127,8 +108,18 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 }
 
 extension SaferContinuation where C == UnsafeContinuation<Void, Error> {
-//	static let test = "fart"
-	public static let multipleInvocations = NSNotification.Name("com.redeggproductions.SaferContinuationMultipleInvocations")
-	private static let safeContinuationLock = NSLock()
 
+	/**
+	 This notification is posted to the `NotificationCenter` when a continuation is invoked multiple times. It includes the `SaferContinuation` object as
+	 the `notification.object`
+	 */
+	public static let multipleInvocations = NSNotification.Name("com.redeggproductions.SaferContinuationMultipleInvocations")
+	/**
+	 This notification is posted to the `NotificationCenter` when a continuation is invoked but then not released from memory after `delayCheckInterval`
+	 time has passed. You can disable this check by passing `nil` for `delayCheckInterval`. The `notification.object` is the `SaferContinuation`
+	 object, allowing you to inspect context and call site information
+	 */
+	public static let potentialMemoryLeak = NSNotification.Name("com.redeggproductions.SaferContinuationPotentialMemoryLeak")
+
+	private static let safeContinuationLock = NSLock()
 }
