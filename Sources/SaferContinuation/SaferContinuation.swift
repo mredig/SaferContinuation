@@ -14,8 +14,6 @@ extension UnsafeContinuation: Continuation {}
 extension CheckedContinuation: Continuation {}
 
 
-fileprivate let safeContinuationLock = NSLock()
-
 /// Can only work with throwing continuations because it needs to be able to throw on failed scenarios
 final public class SaferContinuation<C: Continuation>: Sendable, Continuation where C.E == Error {
 	private let continuation: C
@@ -23,6 +21,8 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	let isFatal: Bool
 
 	private var hasRun = false
+
+	private typealias Statics = SaferContinuation<UnsafeContinuation<Void, Error>>
 
 	private let file: StaticString
 	private let line: Int
@@ -41,8 +41,9 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	}
 
 	deinit {
-		safeContinuationLock.lock()
-		defer { safeContinuationLock.unlock() }
+		SaferContinuation<UnsafeContinuation<Void, Error>>.safeContinuationLock.lock()
+		defer { SaferContinuation<UnsafeContinuation<Void, Error>>.safeContinuationLock.unlock() }
+
 		if hasRun == false {
 			let error = SafeContinuationError.continuationNeverCompleted(file: file, line: line, function: function)
 			self.continuation.resume(throwing: error)
@@ -57,6 +58,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 			try markCompleted()
 		} catch {
 			print("WARNING: Continuation already completed!: \(error)")
+			NotificationCenter.default.post(name: Statics.multipleInvocations , object: self)
 			if isFatal {
 				fatalError("Continuation already completed!: \(error)")
 			}
@@ -70,6 +72,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 			try markCompleted()
 		} catch {
 			print("WARNING: Continuation already completed!: \(error)")
+			NotificationCenter.default.post(name: Statics.multipleInvocations , object: self)
 			if isFatal {
 				fatalError("Continuation already completed!: \(error)")
 			}
@@ -83,6 +86,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 			try markCompleted()
 		} catch {
 			print("WARNING: Continuation already completed!: \(error)")
+			NotificationCenter.default.post(name: Statics.multipleInvocations , object: self)
 			if isFatal {
 				fatalError("Continuation already completed!: \(error)")
 			}
@@ -92,8 +96,9 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	}
 
 	private func markCompleted() throws {
-		safeContinuationLock.lock()
-		defer { safeContinuationLock.unlock() }
+		Statics.safeContinuationLock.lock()
+		defer { Statics.safeContinuationLock.unlock() }
+
 		guard hasRun == false else { throw SafeContinuationError.alreadyRun(file: file, line: line, function: function) }
 		hasRun = true
 
@@ -117,4 +122,11 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		case alreadyRun(file: StaticString, line: Int, function: StaticString)
 		case continuationNeverCompleted(file: StaticString, line: Int, function: StaticString)
 	}
+}
+
+extension SaferContinuation where C == UnsafeContinuation<Void, Error> {
+//	static let test = "fart"
+	public static let multipleInvocations = NSNotification.Name("com.redeggproductions.SaferContinuationMultipleInvocations")
+	private static let safeContinuationLock = NSLock()
+
 }
