@@ -97,17 +97,22 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		guard hasRun == false else { throw SafeContinuationError.alreadyRun(file: file, line: line, function: function, context: context) }
 		hasRun = true
 
+		startDelayedCheck()
+	}
+
+	private func startDelayedCheck(iteration: Int = 0) {
 		if let delayCheckInterval = delayCheckInterval {
 			Task { [weak self, isFatal, file, line, function, context] in
 				try await Task.sleep(nanoseconds: UInt64(delayCheckInterval * 1_000_000_000))
 				guard self == nil else {
 					let error = SafeContinuationError.alreadyRun(file: file, line: line, function: function, context: context)
-					let message = "WARNING: Continuation completed \(delayCheckInterval) seconds ago and hasn't been released from memory!: \(error)"
+					let message = "WARNING: Continuation completed \(delayCheckInterval * TimeInterval(iteration + 1)) seconds ago and hasn't been released from memory!: \(error)"
 					print(message)
 					NotificationCenter.default.post(name: Statics.potentialMemoryLeak, object: self)
 					if isFatal {
 						fatalError(message)
 					}
+					self?.startDelayedCheck(iteration: iteration + 1)
 					return
 				}
 			}
