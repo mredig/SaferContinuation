@@ -13,12 +13,11 @@ public protocol Continuation {
 extension UnsafeContinuation: Continuation {}
 extension CheckedContinuation: Continuation {}
 
-
 /// Can only work with throwing continuations because it needs to be able to throw on failed scenarios
 final public class SaferContinuation<C: Continuation>: Sendable, Continuation where C.E == Error {
 	private let continuation: C
 
-	let isFatal: Bool
+	let isFatal: SaferContinuation<UnsafeContinuation<Void, Error>>.FatalityOptions
 
 	private var hasRun = false
 
@@ -45,7 +44,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	  - context: Allows you to provide any arbitrary data to differentiate between different continuations that you can inspect when errors are thrown or
 	 notifications posted.. Could be a string, a UUID, a UIImage, or your mom's nickname. The last one is probably not useful though. You be the judge.
 	 */
-	public init(_ continuation: C, isFatal: Bool = false, delayCheckInterval: TimeInterval? = 3, file: StaticString = #file, line: Int = #line, function: StaticString = #function, context: Any? = nil) {
+	public init(_ continuation: C, isFatal: SaferContinuation<UnsafeContinuation<Void, Error>>.FatalityOptions = false, delayCheckInterval: TimeInterval? = 3, file: StaticString = #file, line: Int = #line, function: StaticString = #function, context: Any? = nil) {
 		self.continuation = continuation
 		self.isFatal = isFatal
 		self.file = file
@@ -62,7 +61,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		if hasRun == false {
 			let error = SafeContinuationError.continuationNeverCompleted(file: file, line: line, function: function, context: context)
 			self.continuation.resume(throwing: error)
-			if isFatal {
+			if isFatal.contains(.onDeinitWithoutCompletion) {
 				fatalError("Continuation was never completed!: \(error)")
 			}
 		}
@@ -82,7 +81,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		} catch {
 			print("WARNING: Continuation already completed!: \(error)")
 			NotificationCenter.default.post(name: Statics.multipleInvocations , object: self)
-			if isFatal {
+			if isFatal.contains(.onMultipleCompletions) {
 				fatalError("Continuation already completed!: \(error)")
 			}
 			return
@@ -109,7 +108,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 					let message = "WARNING: Continuation completed \(delayCheckInterval * TimeInterval(iteration + 1)) seconds ago and hasn't been released from memory!: \(error)"
 					print(message)
 					NotificationCenter.default.post(name: Statics.potentialMemoryLeak, object: self)
-					if isFatal {
+					if isFatal.contains(.onPostRunDelayCheck) {
 						fatalError(message)
 					}
 					self?.startDelayedCheck(iteration: iteration + 1)
