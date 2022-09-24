@@ -30,6 +30,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 
 	private let delayCheckInterval: TimeInterval?
 
+	private var timeoutTask: Task<Void, Error>?
 
 	/**
 	Basic usage:
@@ -44,7 +45,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	  - context: Allows you to provide any arbitrary data to differentiate between different continuations that you can inspect when errors are thrown or
 	 notifications posted.. Could be a string, a UUID, a UIImage, or your mom's nickname. The last one is probably not useful though. You be the judge.
 	 */
-	public init(_ continuation: C, isFatal: SaferContinuation<UnsafeContinuation<Void, Error>>.FatalityOptions = false, delayCheckInterval: TimeInterval? = 3, file: StaticString = #file, line: Int = #line, function: StaticString = #function, context: Any? = nil) {
+	public init(_ continuation: C, isFatal: SaferContinuation<UnsafeContinuation<Void, Error>>.FatalityOptions = false, timeout: TimeInterval? = nil, delayCheckInterval: TimeInterval? = 3, file: StaticString = #file, line: Int = #line, function: StaticString = #function, context: Any? = nil) {
 		self.continuation = continuation
 		self.isFatal = isFatal
 		self.file = file
@@ -52,11 +53,22 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		self.function = function
 		self.delayCheckInterval = delayCheckInterval
 		self.context = context
+
+		if let timeout = timeout {
+			self.timeoutTask = Task(priority: .low) { [weak self] in
+				let timeoutDelay = UInt64(timeout * 1_000_000_000)
+				try await Task.sleep(nanoseconds: timeoutDelay)
+
+				self?.executeTimeout()
+			}
+		}
 	}
 
 	deinit {
 		Statics.safeContinuationLock.lock()
 		defer { Statics.safeContinuationLock.unlock() }
+
+		timeoutTask?.cancel()
 
 		if hasRun == false {
 			let error = SafeContinuationError.continuationNeverCompleted(file: file, line: line, function: function, context: context)
@@ -118,6 +130,24 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		}
 	}
 
+	private func executeTimeout() {
+		Statics.safeContinuationLock.lock()
+		defer {
+			Statics.safeContinuationLock.unlock()
+		}
+
+		guard hasRun == false else { return }
+		hasRun = true
+
+		let error = SafeContinuationError.timeoutMet(file: file, line: line, function: function, context: context)
+		let message = "WARNING: Continuation timed out!: \(error)"
+		print(message)
+		NotificationCenter.default.post(name: Statics.continuationTimedOut , object: self)
+		if isFatal.contains(.onTimeout) {
+			fatalError(message)
+		}
+		self.continuation.resume(throwing: error)
+	}
 }
 
 extension SaferContinuation where C == UnsafeContinuation<Void, Error> {
@@ -133,6 +163,7 @@ extension SaferContinuation where C == UnsafeContinuation<Void, Error> {
 	 object, allowing you to inspect context and call site information
 	 */
 	public static let potentialMemoryLeak = NSNotification.Name("com.redeggproductions.SaferContinuationPotentialMemoryLeak")
+	public static let continuationTimedOut = NSNotification.Name("com.redeggproductions.ContinuationTimedOut")
 
 	private static let safeContinuationLock = NSLock()
 }

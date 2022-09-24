@@ -50,7 +50,13 @@ final class SaferContinuationTests: XCTestCase {
 		let result = await task.result
 
 		XCTAssertThrowsError(try result.get())
-
+		guard
+			case .failure(let error) = result,
+			case .continuationNeverCompleted = (error as! SafeContinuationError)
+		else {
+			XCTFail()
+			return
+		}
 		// for some reason, coverage says the lines that throw the error for the result never run, but both a test
 		// breakpoint and this print statement beg to differ.
 		print(result)
@@ -127,5 +133,61 @@ final class SaferContinuationTests: XCTestCase {
 		}
 
 		wait(for: [notificationExpectation, printed], timeout: 1)
+	}
+
+	func testTimeoutWithShortlyCallingAfter() async throws {
+		let notificationExpectation = expectation(forNotification: SaferContinuation.continuationTimedOut, object: nil)
+
+		let task = Task {
+			let _: Void = try await withCheckedThrowingContinuation { continuation in
+				let safer = SaferContinuation(continuation, timeout: 0.25)
+				DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) {
+					// keep it around long enough to allow a timeout
+					print(safer)
+					safer.resume(with: .success(()))
+				}
+			}
+		}
+
+		let result = await task.result
+
+		XCTAssertThrowsError(try result.get())
+		guard
+			case .failure(let error) = result,
+			case .timeoutMet = (error as! SafeContinuationError)
+		else {
+			XCTFail()
+			return
+		}
+
+		wait(for: [notificationExpectation], timeout: 1)
+	}
+
+
+	func testTimeoutWithNeverCalling() async throws {
+		let notificationExpectation = expectation(forNotification: SaferContinuation.continuationTimedOut, object: nil)
+
+		let task = Task {
+			let _: Void = try await withCheckedThrowingContinuation { continuation in
+				let safer = SaferContinuation(continuation, timeout: 0.25)
+				DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) {
+					// keep it around long enough to allow a timeout
+					print(safer)
+				}
+			}
+		}
+
+		let result = await task.result
+
+		XCTAssertThrowsError(try result.get())
+		guard
+			case .failure(let error) = result,
+			case .timeoutMet = (error as! SafeContinuationError)
+		else {
+			XCTFail()
+			return
+		}
+
+		wait(for: [notificationExpectation], timeout: 1)
 	}
 }
