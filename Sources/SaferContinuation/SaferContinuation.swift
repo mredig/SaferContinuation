@@ -118,10 +118,6 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		}
 	}
 
-	public enum SafeContinuationError: Error {
-		case alreadyRun(file: StaticString, line: Int, function: StaticString, context: Any?)
-		case continuationNeverCompleted(file: StaticString, line: Int, function: StaticString, context: Any?)
-	}
 }
 
 extension SaferContinuation where C == UnsafeContinuation<Void, Error> {
