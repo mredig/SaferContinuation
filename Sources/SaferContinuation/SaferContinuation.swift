@@ -31,6 +31,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	private let delayCheckInterval: TimeInterval?
 
 	private var timeoutTask: Task<Void, Error>?
+	public let timeoutInterval: TimeInterval?
 
 	/**
 	Basic usage:
@@ -53,14 +54,10 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		self.function = function
 		self.delayCheckInterval = delayCheckInterval
 		self.context = context
+		self.timeoutInterval = timeout
 
 		if let timeout = timeout {
-			self.timeoutTask = Task(priority: .low) { [weak self] in
-				let timeoutDelay = UInt64(timeout * 1_000_000_000)
-				try await Task.sleep(nanoseconds: timeoutDelay)
-
-				self?.executeTimeout()
-			}
+			createTimeoutTask(timeout)
 		}
 	}
 
@@ -136,7 +133,10 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 			Statics.safeContinuationLock.unlock()
 		}
 
-		guard hasRun == false else { return }
+		guard
+			hasRun == false,
+			Task.isCancelled == false
+		else { return }
 		hasRun = true
 
 		let error = SafeContinuationError.timeoutMet(file: file, line: line, function: function, context: context)
@@ -147,6 +147,31 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 			fatalError(message)
 		}
 		self.continuation.resume(throwing: error)
+	}
+
+	private func createTimeoutTask(_ timeout: TimeInterval) {
+		self.timeoutTask = Task(priority: .low) { [weak self] in
+			let timeoutDelay = UInt64(timeout * 1_000_000_000)
+			try await Task.sleep(nanoseconds: timeoutDelay)
+
+			try Task.checkCancellation()
+
+			self?.executeTimeout()
+		}
+	}
+
+	/**
+	 Resets the timeout interval to keep long running tasks alive
+	 */
+	public func keepAlive() {
+		guard
+			let timeoutInterval,
+			let oldTimeoutTask = timeoutTask
+		else { return }
+
+		oldTimeoutTask.cancel()
+
+		createTimeoutTask(timeoutInterval)
 	}
 }
 
