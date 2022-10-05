@@ -69,10 +69,10 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 
 		if hasRun == false {
 			let error = SafeContinuationError.continuationNeverCompleted(file: file, line: line, function: function, context: context)
-			log.error("ERROR: Continuation was never completed!: \(error)")
+			log.error("ERROR: Continuation (\(memoryAddress)) was never completed!: \(error)")
 			self.continuation.resume(throwing: error)
 			if isFatal.contains(.onDeinitWithoutCompletion) {
-				fatalError("Continuation was never completed!: \(error)")
+				fatalError("Continuation (\(memoryAddress)) was never completed!: \(error)")
 			}
 		}
 	}
@@ -89,10 +89,10 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		do {
 			try markCompleted()
 		} catch {
-			log.error("ERROR: Continuation already completed!: \(error)")
+			log.error("ERROR: Continuation (\(memoryAddress)) already completed!: \(error)")
 			NotificationCenter.default.post(name: Statics.multipleInvocations , object: self)
 			if isFatal.contains(.onMultipleCompletions) {
-				fatalError("Continuation already completed!: \(error)")
+				fatalError("Continuation (\(memoryAddress)) already completed!: \(error)")
 			}
 			return
 		}
@@ -116,7 +116,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 				try await Task.sleep(nanoseconds: delay)
 				if let self = self {
 					let error = SafeContinuationError.alreadyRun(file: file, line: line, function: function, context: context)
-					let message = "ERROR: Continuation completed \(delayCheckInterval * TimeInterval(iteration + 1)) seconds ago and hasn't been released from memory!: \(error)"
+					let message = "ERROR: Continuation (\(memoryAddress)) completed \(delayCheckInterval * TimeInterval(iteration + 1)) seconds ago and hasn't been released from memory!: \(error)"
 					log.error(message)
 					NotificationCenter.default.post(name: Statics.potentialMemoryLeak, object: self)
 					if isFatal.contains(.onPostRunDelayCheck) {
@@ -141,7 +141,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		hasRun = true
 
 		let error = SafeContinuationError.timeoutMet(file: file, line: line, function: function, context: context)
-		let message = "ERROR: Continuation timed out!: \(error)"
+		let message = "ERROR: Continuation (\(memoryAddress)) timed out!: \(error)"
 		log.error(message)
 		NotificationCenter.default.post(name: Statics.continuationTimedOut , object: self)
 		if isFatal.contains(.onTimeout) {
@@ -173,6 +173,24 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		oldTimeoutTask.cancel()
 
 		createTimeoutTask(timeoutInterval)
+	}
+}
+
+extension SaferContinuation: CustomStringConvertible, CustomDebugStringConvertible {
+	public var description: String {
+		descriptionBase(showAddress: true)
+	}
+
+	public var debugDescription: String {
+		descriptionBase(showAddress: true)
+	}
+
+	private func descriptionBase(showAddress: Bool) -> String {
+		"SaferContinuation\(showAddress ? " - \(memoryAddress)" : "") (\(C.self)): file: '\(file)' line: '\(line)' function: '\(function)' context: '\(context as Any)'"
+	}
+
+	public var memoryAddress: UnsafeRawPointer {
+		UnsafeRawPointer(Unmanaged.passUnretained(self).toOpaque())
 	}
 }
 

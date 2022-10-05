@@ -46,7 +46,7 @@ final class SaferContinuationTests: XCTestCase {
 				let safer = SaferContinuation(continuation)
 				DispatchQueue.global().asyncAfter(deadline: .now() + 0.25) {
 					// keep it around long enough to simulate waiting for a callback to do something, but ultimately not fire
-					log.info(safer)
+					log.veryVerbose(safer)
 				}
 			}
 		}
@@ -63,7 +63,7 @@ final class SaferContinuationTests: XCTestCase {
 		}
 		// for some reason, coverage says the lines that throw the error for the result never run, but both a test
 		// breakpoint and this print statement beg to differ.
-		log.info(result)
+		log.veryVerbose(result)
 	}
 
 	func testCorrectInvocationsResult() async throws {
