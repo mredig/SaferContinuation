@@ -69,6 +69,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 
 		if hasRun == false {
 			let error = SafeContinuationError.continuationNeverCompleted(file: file, line: line, function: function, context: context)
+			log.error("ERROR: Continuation was never completed!: \(error)")
 			self.continuation.resume(throwing: error)
 			if isFatal.contains(.onDeinitWithoutCompletion) {
 				fatalError("Continuation was never completed!: \(error)")
