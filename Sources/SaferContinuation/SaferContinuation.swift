@@ -191,4 +191,11 @@ extension SaferContinuation where C == UnsafeContinuation<Void, Error> {
 	public static let continuationTimedOut = NSNotification.Name("com.redeggproductions.ContinuationTimedOut")
 
 	private static let safeContinuationLock = NSLock()
+
+	/**
+	 Only necessary to call if you want print statements/you aren't already using Swiftwood and have added logging destination(s) elsewhere.
+	 */
+	static public func initializeLogging() {
+		setupLogging()
+	}
 }

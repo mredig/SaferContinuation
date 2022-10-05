@@ -20,6 +20,10 @@ extension Task where Success == Never, Failure == Never {
 
 final class SaferContinuationTests: XCTestCase {
 
+	override func setUp() {
+		SaferContinuation.initializeLogging()
+	}
+
 	func testMultipleInvocations() async throws {
 		let notificationExpectation = expectation(forNotification: SaferContinuation.multipleInvocations, object: nil)
 
