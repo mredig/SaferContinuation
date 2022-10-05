@@ -115,7 +115,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 				let delay = UInt64(delayCheckInterval * 1_000_000_000)
 				try await Task.sleep(nanoseconds: delay)
 				if let self = self {
-					let error = SafeContinuationError.alreadyRun(file: file, line: line, function: function, context: context)
+					let error = SafeContinuationError.previouslyRanButUnreleased(file: file, line: line, function: function, context: context)
 					let message = "ERROR: Continuation (\(memoryAddress)) completed \(delayCheckInterval * TimeInterval(iteration + 1)) seconds ago and hasn't been released from memory!: \(error)"
 					log.error(message)
 					NotificationCenter.default.post(name: Statics.potentialMemoryLeak, object: self)
