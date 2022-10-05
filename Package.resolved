@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "Swiftwood",
+        "repositoryURL": "https://github.com/KnowMeGit/Swiftwood.git",
+        "state": {
+          "branch": null,
+          "revision": "bc19c3059ceeef770e6fe330fea3864cb3fc3e5e",
+          "version": "0.1.2"
+        }
+      }
+    ]
+  },
+  "version": 1
+}

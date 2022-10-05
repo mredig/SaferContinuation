@@ -88,7 +88,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		do {
 			try markCompleted()
 		} catch {
-			print("WARNING: Continuation already completed!: \(error)")
+			log.error("ERROR: Continuation already completed!: \(error)")
 			NotificationCenter.default.post(name: Statics.multipleInvocations , object: self)
 			if isFatal.contains(.onMultipleCompletions) {
 				fatalError("Continuation already completed!: \(error)")
@@ -115,8 +115,8 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 				try await Task.sleep(nanoseconds: delay)
 				if let self = self {
 					let error = SafeContinuationError.alreadyRun(file: file, line: line, function: function, context: context)
-					let message = "WARNING: Continuation completed \(delayCheckInterval * TimeInterval(iteration + 1)) seconds ago and hasn't been released from memory!: \(error)"
-					print(message)
+					let message = "ERROR: Continuation completed \(delayCheckInterval * TimeInterval(iteration + 1)) seconds ago and hasn't been released from memory!: \(error)"
+					log.error(message)
 					NotificationCenter.default.post(name: Statics.potentialMemoryLeak, object: self)
 					if isFatal.contains(.onPostRunDelayCheck) {
 						fatalError(message)
@@ -140,8 +140,8 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 		hasRun = true
 
 		let error = SafeContinuationError.timeoutMet(file: file, line: line, function: function, context: context)
-		let message = "WARNING: Continuation timed out!: \(error)"
-		print(message)
+		let message = "ERROR: Continuation timed out!: \(error)"
+		log.error(message)
 		NotificationCenter.default.post(name: Statics.continuationTimedOut , object: self)
 		if isFatal.contains(.onTimeout) {
 			fatalError(message)
