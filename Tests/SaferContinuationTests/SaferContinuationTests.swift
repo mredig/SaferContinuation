@@ -69,7 +69,9 @@ final class SaferContinuationTests: XCTestCase {
 	func testCorrectInvocationsResult() async throws {
 		let task = Task {
 			let _: Void = try await withCheckedThrowingContinuation { continuation in
-				let safer = SaferContinuation(continuation)
+				let safer = SaferContinuation(
+					continuation,
+					delayCheckInterval: 1)
 				DispatchQueue.global().asyncAfter(deadline: .now() + 0.25) {
 					safer.resume(with: .success(Void()))
 				}
@@ -79,6 +81,8 @@ final class SaferContinuationTests: XCTestCase {
 		let result = await task.result
 
 		XCTAssertNoThrow(try result.get())
+
+		try await Task.sleep(duration: 2)
 	}
 
 	func testCorrectInvocationsReturn() async throws {

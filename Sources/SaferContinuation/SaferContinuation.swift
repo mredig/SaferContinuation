@@ -111,7 +111,7 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 
 	private func startDelayedCheck(iteration: Int = 0) {
 		if let delayCheckInterval = delayCheckInterval {
-			Task(priority: .low) { [weak self, isFatal, file, line, function, context] in
+			Task(priority: .low) { [weak self, memoryAddress, isFatal, file, line, function, context] in
 				let delay = UInt64(delayCheckInterval * 1_000_000_000)
 				try await Task.sleep(nanoseconds: delay)
 				if let self = self {
