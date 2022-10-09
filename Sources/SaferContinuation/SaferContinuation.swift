@@ -34,6 +34,11 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 	public let timeoutInterval: TimeInterval?
 
 	/**
+	 Be HYPER paranoid about retaining stuff in these blocks!
+	 */
+	private var onDeinitBlocks: [() -> Void] = []
+
+	/**
 	Basic usage:
 	- Parameters:
 	  - continuation: Provide the original continuation. This is the only required argument as everything else has default provided values.
@@ -75,6 +80,8 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 				fatalError("Continuation (\(memoryAddress)) was never completed!: \(error)")
 			}
 		}
+
+		onDeinitBlocks.forEach { $0() }
 	}
 
 	public func resume(returning value: C.T) {
@@ -97,6 +104,10 @@ final public class SaferContinuation<C: Continuation>: Sendable, Continuation wh
 			return
 		}
 		continuation.resume(with: result)
+	}
+
+	public func onDeinit(_ block: @escaping () -> Void) {
+		onDeinitBlocks.append(block)
 	}
 
 	private func markCompleted() throws {

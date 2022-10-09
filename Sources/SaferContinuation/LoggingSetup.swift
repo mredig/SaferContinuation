@@ -13,7 +13,7 @@ func setupLogging() {
 	loggingIsSetup = true
 
 	let consoleDestination = ConsoleLogDestination(maxBytesDisplayed: -1)
-	consoleDestination.minimumLogLevel = .verbose
+	consoleDestination.minimumLogLevel = .veryVerbose
 	log.appendDestination(consoleDestination, replicationOption: .forfeitToAlike)
 }
 

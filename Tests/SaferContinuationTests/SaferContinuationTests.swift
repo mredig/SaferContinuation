@@ -257,4 +257,24 @@ final class SaferContinuationTests: XCTestCase {
 
 		wait(for: [notificationExpectation], timeout: 1)
 	}
+
+	func testOnDeinit() async throws {
+		let deinitExpectation = expectation(description: "on deinit")
+
+		let task = Task {
+			let _: Void = try await withCheckedThrowingContinuation { continuation in
+				let safer = SaferContinuation(continuation)
+				safer.onDeinit {
+					deinitExpectation.fulfill()
+				}
+				DispatchQueue.global().asyncAfter(deadline: .now() + 0.25) {
+					safer.resume(returning: ())
+				}
+			}
+		}
+
+		let _ = await task.result
+
+		wait(for: [deinitExpectation], timeout: 10)
+	}
 }
