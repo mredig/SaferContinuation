@@ -3,11 +3,11 @@
     "pins": [
       {
         "package": "Swiftwood",
-        "repositoryURL": "https://github.com/KnowMeGit/Swiftwood.git",
+        "repositoryURL": "https://github.com/mredig/Swiftwood.git",
         "state": {
           "branch": null,
-          "revision": "a0cc473ad05d707ce2b504c5802db22f7f83ed8c",
-          "version": "0.3.0"
+          "revision": "149d07cce2b059558f0846bef572d24b9a43b643",
+          "version": "0.4.1"
         }
       }
     ]
