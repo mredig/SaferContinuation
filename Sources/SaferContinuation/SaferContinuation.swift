@@ -14,7 +14,7 @@ extension UnsafeContinuation: Continuation {}
 extension CheckedContinuation: Continuation {}
 
 /// Can only work with throwing continuations because it needs to be able to throw on failed scenarios
-final public class SaferContinuation<C: Continuation>: Sendable, Continuation where C.E == Error {
+final public class SaferContinuation<C: Continuation & Sendable>: @unchecked Sendable, Continuation where C.E == Error {
 	private let continuation: C
 
 	let isFatal: SaferContinuation<UnsafeContinuation<Void, Error>>.FatalityOptions
