@@ -37,7 +37,7 @@ final class SaferContinuationTests: XCTestCase {
 			}
 		}
 
-		wait(for: [notificationExpectation], timeout: 1)
+		await fulfillment(of: [notificationExpectation], timeout: 1)
 	}
 
 	func testNoInvocations() async throws {
@@ -140,7 +140,7 @@ final class SaferContinuationTests: XCTestCase {
 			}
 		}
 
-		wait(for: [notificationExpectation, printed], timeout: 1)
+		await fulfillment(of: [notificationExpectation, printed], timeout: 1)
 	}
 
 	func testTimeoutWithShortlyCallingAfter() async throws {
@@ -168,7 +168,7 @@ final class SaferContinuationTests: XCTestCase {
 			return
 		}
 
-		wait(for: [notificationExpectation], timeout: 1)
+		await fulfillment(of: [notificationExpectation], timeout: 1)
 	}
 
 	func testTimeoutWithNeverCalling() async throws {
@@ -195,7 +195,7 @@ final class SaferContinuationTests: XCTestCase {
 			return
 		}
 
-		wait(for: [notificationExpectation], timeout: 1)
+		await fulfillment(of: [notificationExpectation], timeout: 1)
 	}
 
 	func testTimeoutWithKeepaliveSuccess() async throws {
@@ -255,7 +255,7 @@ final class SaferContinuationTests: XCTestCase {
 			return
 		}
 
-		wait(for: [notificationExpectation], timeout: 1)
+		await fulfillment(of: [notificationExpectation], timeout: 1)
 	}
 
 	func testOnDeinit() async throws {
@@ -275,6 +275,6 @@ final class SaferContinuationTests: XCTestCase {
 
 		let _ = await task.result
 
-		wait(for: [deinitExpectation], timeout: 10)
+		await fulfillment(of: [deinitExpectation], timeout: 10)
 	}
 }
