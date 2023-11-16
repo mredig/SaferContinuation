@@ -114,6 +114,10 @@ final public class SaferContinuation<C: Continuation & Sendable>: @unchecked Sen
 		Statics.safeContinuationLock.lock()
 		defer { Statics.safeContinuationLock.unlock() }
 
+		try _markCompleted()
+	}
+
+	private func _markCompleted() throws {
 		guard hasRun == false else { throw SafeContinuationError.alreadyRun(file: file, line: line, function: function, context: context) }
 		hasRun = true
 
@@ -146,10 +150,13 @@ final public class SaferContinuation<C: Continuation & Sendable>: @unchecked Sen
 		}
 
 		guard
-			hasRun == false,
 			Task.isCancelled == false
 		else { return }
-		hasRun = true
+		do {
+			try _markCompleted()
+		} catch {
+			return
+		}
 
 		let error = SafeContinuationError.timeoutMet(file: file, line: line, function: function, context: context)
 		let message = "ERROR: Continuation (\(memoryAddress)) timed out!: \(error)"
