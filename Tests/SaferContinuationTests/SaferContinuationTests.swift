@@ -28,7 +28,7 @@ final class SaferContinuationTests: XCTestCase {
 		let notificationExpectation = expectation(forNotification: SaferContinuation.multipleInvocations, object: nil)
 
 		let _: Void = try await withCheckedThrowingContinuation { continuation in
-			let safer = SaferContinuation(continuation)
+			let safer = SaferContinuation(continuation, isFatal: false)
 			DispatchQueue.global().asyncAfter(deadline: .now() + 0.25) {
 				safer.resume(with: .success(Void()))
 			}
@@ -43,7 +43,7 @@ final class SaferContinuationTests: XCTestCase {
 	func testNoInvocations() async throws {
 		let task = Task {
 			let _: Void = try await withCheckedThrowingContinuation { continuation in
-				let safer = SaferContinuation(continuation)
+				let safer = SaferContinuation(continuation, isFatal: false)
 				DispatchQueue.global().asyncAfter(deadline: .now() + 0.25) {
 					// keep it around long enough to simulate waiting for a callback to do something, but ultimately not fire
 					log.veryVerbose(safer)
@@ -130,7 +130,7 @@ final class SaferContinuationTests: XCTestCase {
 		let printed = expectation(description: "wait for print statement")
 
 		let _: Void = try await withCheckedThrowingContinuation { continuation in
-			let safer = SaferContinuation(continuation, delayCheckInterval: 0.25)
+			let safer = SaferContinuation(continuation, isFatal: false, delayCheckInterval: 0.25)
 			DispatchQueue.global().asyncAfter(deadline: .now() + 0.25) {
 				safer.resume(with: .success(Void()))
 			}
@@ -148,7 +148,7 @@ final class SaferContinuationTests: XCTestCase {
 
 		let task = Task {
 			let _: Void = try await withCheckedThrowingContinuation { continuation in
-				let safer = SaferContinuation(continuation, timeout: 0.25)
+				let safer = SaferContinuation(continuation, isFatal: false, timeout: 0.25)
 				DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) {
 					// keep it around long enough to allow a timeout
 					log.veryVerbose(safer)
@@ -176,7 +176,7 @@ final class SaferContinuationTests: XCTestCase {
 
 		let task = Task {
 			let _: Void = try await withCheckedThrowingContinuation { continuation in
-				let safer = SaferContinuation(continuation, timeout: 0.25)
+				let safer = SaferContinuation(continuation, isFatal: false, timeout: 0.25)
 				DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) {
 					// keep it around long enough to allow a timeout
 					log.veryVerbose(safer)
@@ -228,7 +228,7 @@ final class SaferContinuationTests: XCTestCase {
 
 		let task = Task {
 			let _: Void = try await withCheckedThrowingContinuation { continuation in
-				let safer = SaferContinuation(continuation, timeout: 0.25)
+				let safer = SaferContinuation(continuation, isFatal: false, timeout: 0.25)
 				DispatchQueue.global().asyncAfter(deadline: .now() + 0.24) {
 					safer.keepAlive()
 				}
